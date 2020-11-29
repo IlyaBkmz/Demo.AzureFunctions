@@ -1,0 +1,54 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "env": {
+            "value": "d"
+        },
+        "projectName": {
+            "value": "mad"
+        },
+        "subsidiary": {
+            "value":"mad"
+        },
+        "firstDeploy": {
+            "value": false
+        },
+        "functionAppName": {
+            "value": "notification"
+        },
+        "location": {
+            "value": "West Europe"
+        },
+        "serviceBusEmailQueueName": {
+            "value": "email"
+        },
+        "serviceBusSmsQueueName": {
+            "value": "sms"
+        },
+        "sendGridFrom": {
+            "value": "sendGridFrom"
+        },
+        "sendGridFromEmail": {
+            "value": "sendGridFromEmail"
+        },
+        "sendGridToEmail": {
+            "value": "sendGridToEmail"
+        },
+        "sendGridAccountConfirmationTemplateId": {
+            "value": "sendGridAccountConfirmationTemplateId"
+        },
+        "sendGridAccountActivationTemplateId": {
+            "value": "sendGridAccountActivationTemplateId"
+        },
+        "sendGridPersonalInfoModificationTemplateId": {
+            "value": "sendGridPersonalInfoModificationTemplateId"
+        },
+        "sendGridPasswordChangedTemplateId": {
+            "value": "sendGridPasswordChangedTemplateId"
+        },
+        "sendGridKey": {
+            "value": "sendGridKey"
+        }
+    }
+}

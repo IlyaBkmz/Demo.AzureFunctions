@@ -1,0 +1,381 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "env": {
+            "defaultValue": "d",
+            "type": "string",
+            "allowedValues": [
+                "d",
+                "q",
+                "p"
+            ],
+            "metadata": {
+                "description": "The environment preffix for ressources."
+            }
+        },
+        "firstDeploy": {
+            "defaultValue": "false",
+            "type": "bool",
+            "metadata": {
+                "description": "The value indicating the first deploy to the resource group."
+            }
+        },
+        "location": {
+            "defaultValue": "[resourceGroup().location]",
+            "type": "string",
+            "metadata": {
+                "description": "The location for ressources."
+            }
+        },
+        "subsidiary": {
+            "defaultValue": "subsidiary",
+            "type": "string",
+            "metadata": {
+                "description": "The subsidiary name."
+            }
+        },
+        "functionAppName": {
+            "defaultValue": "notification",
+            "type": "string",
+            "metadata": {
+                "description": "The name of the function app to create."
+            }
+        },
+        "serviceBusEmailQueueName": {
+            "defaultValue": "emails",
+            "type": "string",
+            "metadata": {
+                "description": "The name of the email's queue to create."
+            }
+        },
+        "serviceBusSmsQueueName": {
+            "defaultValue": "sms",
+            "type": "string",
+            "metadata": {
+                "description": "The name of the sms's queue to create."
+            }
+        },
+        "sendGridFrom": {
+            "defaultValue": "someValue",
+            "type": "string",
+            "metadata": {
+                "description": "SendGrid mail from field."
+            }
+        },
+        "sendGridFromEmail": {
+            "defaultValue": "sendGridFromEmail",
+            "type": "string",
+            "metadata": {
+                "description": "SendGrid From Email."
+            }
+        },
+        "sendGridToEmail": {
+            "defaultValue": "sendGridToEmail",
+            "type": "string",
+            "metadata": {
+                "description": "The SendGrid To email."
+            }
+        },
+        "sendGridAccountConfirmationTemplateId": {
+            "defaultValue": "sendGridAccountConfirmationTemplateId",
+            "type": "string",
+            "metadata": {
+                "description": "The id of SendGrid template for an account confirmation."
+            }
+        },
+        "sendGridAccountActivationTemplateId": {
+            "defaultValue": "sendGridAccountActivationTemplateId",
+            "type": "string",
+            "metadata": {
+                "description": "The id of SendGrid template for an account activation."
+            }
+        },
+        "sendGridPersonalInfoModificationTemplateId": {
+            "defaultValue": "sendGridPersonalInfoModificationTemplateId",
+            "type": "string",
+            "metadata": {
+                "description": "The id of SendGrid template for personal info modification."
+            }
+        },
+        "sendGridPasswordChangedTemplateId": {
+            "defaultValue": "sendGridPasswordChangedTemplateId",
+            "type": "string",
+            "metadata": {
+                "description": "The id of SendGrid template for a password changed email."
+            }
+        },
+        "sendGridKey": {
+            "defaultValue": "sendGridKey",
+            "type": "string",
+            "metadata": {
+                "description": "The SendGrid key."
+            }
+        }
+    },
+    "variables": {
+        "groupSuffix": "[substring(uniquestring(resourceGroup().id),0,5)]",
+        "keyVaultName": "[concat(parameters('env'), '-kv-', parameters('subsidiary'), '-', variables('groupSuffix'))]",
+        "functionAppName": "[concat(parameters('env'), '-fa-', parameters('functionAppName'), '-', variables('groupSuffix'))]",
+        "storageAccountName": "[replace(concat(parameters('env'), 'sa', parameters('functionAppName'), variables('groupSuffix')),'-','')]",
+        "serviceBusNamespaceName": "[concat(parameters('env'), '-sb-', parameters('subsidiary'), '-', variables('groupSuffix'))]",
+        "applicationInsightsName": "[concat(parameters('env'), '-appins-', parameters('functionAppName'), '-', variables('groupSuffix'))]",
+        "functionsWebFarmName": "[concat(parameters('env'), '-asp-', parameters('functionAppName'), '-', variables('groupSuffix'))]",
+        "resourceTags": {
+            "environment": "[parameters('env')]",
+            "subsidiary": "[parameters('subsidiary')]"
+        },
+
+        "sbVersion": "2017-04-01",
+        "keyVaultApiVersion": "2018-02-14",
+        "keyVaultSecretApiVersion": "2015-06-01",
+
+        "storageAccountSecretName": "[concat('notificationStorageAccountName','Secret')]",
+        "sendGridKeySecretName": "[concat('sendGridKey','Secret')]",
+        "serviceBusConnectionSecretName": "[concat('serviceBusConnection', 'Secret')]",
+
+        "storageAccountResourceId": "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "storageAccountSecretResourceId": "[resourceId(resourceGroup().name, 'Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('storageAccountSecretName'))]",
+        "serviceBusConnectionSecretResourceId": "[resourceId(resourceGroup().name, 'Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('serviceBusConnectionSecretName'))]",
+        "sendGridKeySecretResourceId": "[resourceId(resourceGroup().name, 'Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('sendGridKeySecretName'))]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2014-04-01",
+            "name": "[variables('applicationInsightsName')]",
+            "type": "Microsoft.Insights/components",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "properties": {
+                "applicationId": "[variables('applicationInsightsName')]"
+            }
+        },
+        {
+            "apiVersion": "[variables('sbVersion')]",
+            "name": "[variables('serviceBusNamespaceName')]",
+            "type": "Microsoft.ServiceBus/namespaces",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "properties": {},
+            "resources": [
+                {
+                    "apiVersion": "[variables('sbVersion')]",
+                    "name": "[parameters('serviceBusEmailQueueName')]",
+                    "type": "Queues",
+                    "dependsOn": [
+                        "[concat('Microsoft.ServiceBus/namespaces/', variables('serviceBusNamespaceName'))]"
+                    ],
+                    "properties": {
+                        "rights": [
+                            "Listen"
+                        ]
+                    },
+                    "resources": []
+                },
+                {
+                    "apiVersion": "[variables('sbVersion')]",
+                    "name": "[parameters('serviceBusSmsQueueName')]",
+                    "type": "Queues",
+                    "dependsOn": [
+                        "[concat('Microsoft.ServiceBus/namespaces/', variables('serviceBusNamespaceName'))]"
+                    ],
+                    "properties": {
+                        "rights": [
+                            "Listen"
+                        ]
+                    },
+                    "resources": []
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('storageAccountName')]",
+            "apiVersion": "2015-06-15",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "properties": {
+                "accountType": "Standard_LRS"
+            }
+        },
+        {
+            "comments": "consumption plan for functions",
+            "type": "Microsoft.Web/serverfarms",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "kind": "functionapp",
+            "name": "[variables('functionsWebFarmName')]",
+            "apiVersion": "2016-09-01",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "scale": null,
+            "properties": {
+                "name": "[variables('functionsWebFarmName')]",
+                "perSiteScaling": false,
+                "reserved": false,
+                "targetWorkerCount": 0,
+                "targetWorkerSizeId": 0
+            },
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "[variables('keyVaultApiVersion')]",
+            "name": "[variables('keyVaultName')]",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]"
+            ],
+            "properties": {
+                "enabledForDeployment": "true",
+                "enabledForDiskEncryption": "false",
+                "enabledForTemplateDeployment": "false",
+                "createMode": "[if(parameters('firstDeploy'), 'create', 'recover')]",
+                "tenantId": "[subscription().tenantId]",
+                "sku": {
+                   "name": "Standard",
+                   "family": "A"
+                },
+                "accessPolicies": "[if(parameters('firstDeploy'), json('[]'), json('null'))]"
+            },
+            "resources": [
+                {
+                    "type": "secrets",
+                    "apiVersion": "[variables('keyVaultApiVersion')]",
+                    "name": "[variables('storageAccountSecretName')]",
+                    "location": "[parameters('location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+                    ],
+                    "properties": {
+                        "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountResourceId'), '2015-05-01-preview').key1)]"
+                    }
+                },
+                {
+                    "type": "secrets",
+                    "apiVersion": "[variables('keyVaultApiVersion')]",
+                    "name": "[variables('sendGridKeySecretName')]",
+                    "location": "[parameters('location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"
+                    ],
+                    "properties": {
+                        "value": "[parameters('sendGridKey')]"
+                    }
+                },
+                {
+                    "type": "secrets",
+                    "apiVersion": "[variables('keyVaultApiVersion')]",
+                    "name": "[variables('serviceBusConnectionSecretName')]",
+                    "location": "[parameters('location')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]",
+                        "[resourceId('Microsoft.ServiceBus/namespaces', variables('serviceBusNamespaceName'))]"
+                    ],
+                    "properties": {
+                        "value": "[listKeys(resourceId(concat('Microsoft.ServiceBus/namespaces/AuthorizationRules'),variables('serviceBusNamespaceName'), 'RootManageSharedAccessKey'), variables('sbVersion')).primaryConnectionString]"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/accessPolicies",
+            "name": "[concat(variables('keyVaultName'), '/add')]",
+            "apiVersion": "[variables('keyVaultApiVersion')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"
+            ],
+            "properties": {
+                "accessPolicies": [
+                    {
+                        "tenantId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2018-11-01', 'Full').identity.tenantId]",
+                        "objectId": "[reference(resourceId('Microsoft.Web/sites', variables('functionAppName')), '2018-11-01', 'Full').identity.principalId]",
+                        "permissions": {
+                            "secrets": [
+                                "get",
+                                "list"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2016-08-01",
+            "name": "[variables('functionAppName')]",
+            "location": "[parameters('location')]",
+            "tags":"[variables('resourceTags')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('functionsWebFarmName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+            ],
+            "kind": "functionapp",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionsWebFarmName'))]"
+            },
+            "resources": [
+                {
+                    "type": "config",
+                    "apiVersion": "2015-08-01",
+                    "name": "web",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', variables('functionAppName'))]"
+                    ],
+                    "properties": {
+                        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('functionsWebFarmName'))]"
+                    }
+                },
+                {
+                    "type": "config",
+                    "apiVersion": "2015-08-01",
+                    "name": "appsettings",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/sites', variables('functionAppName'))]",
+                        "[resourceId('Microsoft.Insights/components', variables('applicationInsightsName'))]",
+                        "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]",
+                        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('storageAccountSecretName'))]",
+                        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('serviceBusConnectionSecretName'))]",
+                        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('keyVaultName'), variables('sendGridKeySecretName'))]"
+                    ],
+                    "properties": {
+                        "AzureWebJobsDashboard": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('storageAccountSecretResourceId'), variables('keyVaultSecretApiVersion')).secretUriWithVersion, ')')]",
+                        "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('storageAccountSecretResourceId'), variables('keyVaultSecretApiVersion')).secretUriWithVersion, ')')]",
+                        "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('storageAccountSecretResourceId'), variables('keyVaultSecretApiVersion')).secretUriWithVersion, ')')]",
+                        "WEBSITE_CONTENTSHARE": "[toLower(variables('functionAppName'))]",
+                        "FUNCTIONS_EXTENSION_VERSION": "~3",
+                        "SENDGRID_KEY": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('sendGridKeySecretResourceId'), variables('keyVaultSecretApiVersion')).secretUriWithVersion, ')')]",
+                        "SENDGRID_FROM_EMAIL": "[parameters('sendGridFromEmail')]",
+                        "SENDGRID_FROM": "[parameters('sendGridFrom')]",
+                        "SENDGRID_TO_EMAIL": "[parameters('sendGridToEmail')]",
+                        "SENDGRID_ACCOUNT_CONFIRMATION_TEMPLATEID": "[parameters('sendGridAccountConfirmationTemplateId')]",
+                        "SENDGRID_ACCOUNT_ACTIVATION_TEMPLATEID": "[parameters('sendGridAccountActivationTemplateId')]",
+                        "SENDGRID_PASSWORD_CHANGED_TEMPLATEID": "[parameters('sendGridPasswordChangedTemplateId')]",
+                        "SENDGRID_PERSONAL_INFO_MODIFICATION_TEMPLATEID": "[parameters('sendGridPersonalInfoModificationTemplateId')]",
+                        "ServiceBusConnection": "[concat('@Microsoft.KeyVault(SecretUri=', reference(variables('serviceBusConnectionSecretResourceId'), variables('keyVaultSecretApiVersion')).secretUriWithVersion, ')')]",
+                        "EmailQueueName": "[parameters('serviceBusEmailQueueName')]",
+                        "SmsQueueName": "[parameters('serviceBusSmsQueueName')]",
+                        "UserNotificationCollectionId": "[parameters('userNotificationCollectionId')]",
+                        "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('microsoft.insights/components/', variables('applicationInsightsName')), '2015-05-01').InstrumentationKey]"
+                    }
+                }
+            ]
+        }
+    ],
+    "outputs": {
+        "functionAppName": {
+            "type": "string",
+            "value": "[variables('functionAppName')]"
+        }
+    }
+}

@@ -1,0 +1,15 @@
+﻿// <copyright file="GlobalSuppressions.cs" company="Demo">
+// Copyright (c) Demo. All rights reserved.
+// </copyright>
+
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "companyName": "Demo"
+    },
+    "layoutRules": {
+      "newlineAtEndOfFile": "require"
+    }
+  }
+}
